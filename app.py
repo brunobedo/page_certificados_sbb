@@ -5,13 +5,10 @@ from pathlib import Path
 from typing import Optional
 import streamlit as st
 
-EXPECTED_SUFFIX = "certificado_sbb_2025"
-# Caminho do manifest na mesma pasta do app.py (funciona mesmo rodando de outro diretório)
+EXPECTED_SUFFIX = "certificado_sbb_2025.png"
 MANIFEST_PATH = Path(__file__).resolve().parent / "certificados.json"
-DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1hxzbqFqY3BRKIeVjFgAoIRKc6UyXyGjq?usp=drive_link"
 
 def normalize_name(value: str) -> str:
-    """Normaliza texto para o padrão esperado nos arquivos."""
     if value is None:
         return ""
     value = unicodedata.normalize("NFD", value)
@@ -27,7 +24,7 @@ def build_filename(first_name: str, last_name: str) -> str:
     return f"{first}_{last}_{EXPECTED_SUFFIX}"
 
 @st.cache_data
-def load_manifest(path: Path) -> dict:
+def load_manifest(path: Path, _mtime: float) -> dict:
     if not path.exists():
         return {}
     with open(path, "r", encoding="utf-8") as f:
@@ -35,193 +32,150 @@ def load_manifest(path: Path) -> dict:
 
 def find_certificate_url(first_name: str, last_name: str, manifest: dict) -> tuple[str, Optional[str]]:
     filename = build_filename(first_name, last_name)
-    return filename, manifest.get(filename)
+    url = manifest.get(filename)
+    if url is None and filename.endswith(".png"):
+        url = manifest.get(filename[:-4])
+    elif url is None:
+        url = manifest.get(filename + ".png")
+    return filename, url
 
-# === PAGE SETTINGS & STYLES ===
-st.set_page_config(
-    page_title="Certificados SBB 2025",
-    page_icon=":white_check_mark:",
-    layout="centered",
-)
+# === PAGE ===
+st.set_page_config(page_title="Certificados SBB 2025", page_icon="✓", layout="centered")
+
 st.markdown(
     """
     <style>
-        html, body, .main {
-            background: #f8fbf7 !important;
+        html, body, .main, [data-testid="stAppViewContainer"], [data-testid="stAppViewBlockContainer"], [data-testid="stDecoration"] {
+            background: #fff !important;
+            color: #111 !important;
         }
-        .main-title {
-            font-family: 'Inter', 'Montserrat', Arial, sans-serif;
-            font-weight: bold;
-            font-size: 2.4em;
-            letter-spacing: -.016em;
-            color: #218c39;
+        .block-container {
+            background: #fff;
+        }
+        .highlight-sbb {
+            font-family: system-ui, -apple-system, sans-serif;
+            font-weight: 900;
+            font-size: 2.2rem;
+            color: #016131;
+            letter-spacing: 0.03em;
+            background: #e6f3ea;
+            border-radius: 10px;
+            margin-bottom: 0.2rem;
             text-align: center;
-            margin-top: 0.1em;
-            margin-bottom: 0.15em;
+            margin-top: 1.0rem;
+            padding: 0.5rem 1rem 0.3rem 1rem;
+            text-shadow: 0 2px 2px rgba(1,97,49,0.04);
+            border: 2.5px solid #01613122;
         }
-        .sub-title {
-            color: #48a063;
+        .cert-ano {
             text-align: center;
-            font-size: 1.1em;
-            margin-top: -0.7em;
-            margin-bottom: 1.2em;
+            color: #1ecc42;
+            font-size: 1.15rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            background: #f4fcf8;
+            border-radius: 7px;
+            margin-bottom: 0.8rem;
+            margin-top: 0.20rem;
+            padding: 0.3rem 1rem 0.3rem 1rem;
+            border: 1.5px solid #1ecc4235;
+            text-shadow: 0 1px 1px #fff0;
         }
-        ul.fancy-list {
-            color: #4b6f52;
-            font-size: 1em;
-            margin-top: -5px;
+        .subtitle {
+            font-size: 1rem;
+            color: #141f1a;
+            text-align: center;
+            margin-bottom: 1.3rem;
+            font-weight: 500;
+            letter-spacing: 0.5px;
         }
         .stTextInput>div>div>input {
-            background: #fff;
-            border: 1.6px solid #b4e3bf;
-            border-radius: 6.5px;
-            font-size: 1.07em;
-            color: #217249;
+            background: #fff !important;
+            border: 1.7px solid #016131 !important;
+            border-radius: 10px;
+            color: #111;
+        }
+        .stTextInput>div>div>input:focus {
+            border-color: #1ecc42 !important;
+            box-shadow: 0 0 0 1.5px #01613170 !important;
+            color: #111 !important;
+        }
+        [data-testid="stButton"] button {
+            background: #016131 !important;
+            color: #fff !important;
+            font-weight: 700;
+            border-radius: 9px;
+            border: 2px solid #111;
+        }
+        [data-testid="stButton"] button:hover {
+            background: #111 !important;
+            color: #1ecc42 !important;
+            border: 2px solid #1ecc42;
+        }
+        .msg {
+            font-size: 1.05rem;
+            font-weight: 500;
+            padding: 0.9rem 1.1rem;
+            border-radius: 8px;
+            margin: 0.7rem 0;
+            text-align: center;
+        }
+        .msg-ok {
+            background: #f0fdf4;
+            color: #016131;
+            border: 1.8px solid #22c55e;
+        }
+        .msg-none {
+            background: #e5e7eb;
+            color: #1f2937;
+            border: 1.6px solid #222827;
+        }
+        .foot {
+            text-align: center;
+            font-size: 0.92rem;
+            color: #111;
+            margin-top: 2.8rem;
             font-weight: 400;
         }
-        .divider {
-            height: 2px;
-            background: linear-gradient(90deg, #aef2be 0%, #e8feee 40%);
-            border: none;
-            margin-top: 16px;
-            margin-bottom: 18px;
-        }
-        .info-file {
-            color: #37a86c;
-            background: #e6f8ec;
-            border-radius: 5px;
-            padding: 0.5em 0.95em 0.5em 0.7em;
-            font-weight: 500;
-            font-size: 1.04em;
-            font-family: Menlo, "Fira Mono", monaco, monospace;
-            display: inline-block;
-            border-left: 3.7px solid #28cd71;
-        }
-        .success-badge {
-            background: #e2f9e1;
-            color: #2d8a53;
-            border: none;
-            border-radius: .74em;
-            padding: 1.0em 0.9em 0.85em 1.05em;
-            margin-bottom: 14px;
-            font-size: 1.11em;
-            box-shadow: 0 2px 16px #52db8540;
-        }
-        .warn-badge {
-            background: #fbffe7;
-            color: #6a824e;
-            border: none;
-            border-radius: .8em;
-            padding: 1.0em 1.0em 0.85em 1.05em;
-            margin-bottom: 15px;
-            font-size: 1.06em;
-            box-shadow: 0 2px 12px #c6e7b64d;
-        }
-        .expander-content {
-            background: #f5fcf2;
-            border-radius: 7px;
-            padding: 1.1em 1.3em;
-            color: #18833e;
-            font-size: 1.02em;
-            border-left: 2.4px solid #aef2be;
-        }
-        code, .expander-content code {
-            background: #e4faee;
-            color: #1c925f;
-            border-radius: 4.5px;
-            padding: 0.09em 0.5em;
-            font-size: .99em;
-        }
-        a, a:visited { color: #218c39; text-decoration: underline dotted; }
-        .st-emotion-cache-1y4p8pa, .st-emotion-cache-1c7y2kd { /* st.button */ background: linear-gradient(90deg, #e4faee 10%, #b4e3be 90%) !important; color: #208d42 !important; font-weight: bold !important;}
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-st.markdown('<div class="main-title">✅ Certificados</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-title">Encontre e baixe seu certificado de Associados da Sociedade Brasileira de Biomecânica 2025</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-title">Sociedade Brasileira de Biomecânica 2025</div>', unsafe_allow_html=True)
-
-st.write(
-    """
-    <ul class='fancy-list'>
-        <li>Digite <b>primeiro nome</b> e <b>último nome</b> nos campos abaixo.</li>
-        <li>Os nomes precisam bater com o padrão dos arquivos salvos <span style="color:#65b078">no Google Drive Verde SBB</span>.</li>
-    </ul>
-    """,
-    unsafe_allow_html=True
+st.markdown('<div class="highlight-sbb">Sociedade Brasileira de Biomecânica</div>', unsafe_allow_html=True)
+st.markdown(
+    '<div class="cert-ano">Certificados de Associação · Ano 2025</div>',
+    unsafe_allow_html=True,
+)
+st.markdown(
+    '<div class="subtitle">Consulte e baixe seu certificado de associado à Sociedade Brasileira de Biomecânica.</div>',
+    unsafe_allow_html=True,
 )
 
-with st.container():
-    col1, col2 = st.columns(2)
-    with col1:
-        first_name = st.text_input("Primeiro nome", placeholder="Ex.: pedro")
-    with col2:
-        last_name = st.text_input("Último nome", placeholder="Ex.: silva")
+col1, col2 = st.columns(2)
+with col1:
+    first_name = st.text_input("Primeiro nome", placeholder="Ex.: Maria")
+with col2:
+    last_name = st.text_input("Último nome", placeholder="Ex.: Silva")
 
-manifest = load_manifest(MANIFEST_PATH)
+_mtime = MANIFEST_PATH.stat().st_mtime if MANIFEST_PATH.exists() else 0.0
+manifest = load_manifest(MANIFEST_PATH, _mtime)
 
-st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
-
-# Minimal color palette
-PRIMARY_COLOR = "#232B2B"  # Charcoal/Dark minimal
-SECONDARY_COLOR = "#545E5E"  # Muted gray
-ACCENT_COLOR = "#00695C"  # Subtle blue-green
-
-if st.button("Buscar certificado", use_container_width=True):
+if st.button("Buscar", use_container_width=True):
     if not first_name.strip() or not last_name.strip():
-        st.error(
-            '<span style="font-family: \'Segoe UI\', Arial, sans-serif; color: %s;">Preencha o <b>primeiro nome</b> e o <b>último nome</b>.</span>'
-            % ACCENT_COLOR,
-            unsafe_allow_html=True,
-        )
+        st.error("Preencha primeiro e último nome.")
     else:
-        expected_filename, certificate_url = find_certificate_url(first_name, last_name, manifest)
-        st.markdown(
-            f'<div class="info-file" style="font-family: \'Segoe UI\', Arial, sans-serif; color:{SECONDARY_COLOR};">📝 Nome do arquivo: <code style="background:#f2f2f2; color:{PRIMARY_COLOR};">{expected_filename}</code></div>',
-            unsafe_allow_html=True
-        )
+        _, certificate_url = find_certificate_url(first_name, last_name, manifest)
         if certificate_url:
             st.markdown(
-                f"""
-                <div class="success-badge" style="background:#eef4f2; border-left: 4px solid {ACCENT_COLOR}; color:{PRIMARY_COLOR}; font-family: 'Segoe UI', Arial, sans-serif; font-size:1.02em;">
-                    <b>Seu certificado foi encontrado!</b><br>
-                    <span style="font-size:0.96em">Clique no botão abaixo para acessar ou baixar o arquivo.</span>
-                </div>
-                """, unsafe_allow_html=True
+                '<div class="msg msg-ok">Certificado encontrado.<br>Use o botão abaixo para acessar.</div>',
+                unsafe_allow_html=True,
             )
-            st.link_button(
-                "Abrir certificado",
-                certificate_url,
-                use_container_width=True
-            )
+            st.link_button("Abrir certificado", certificate_url, use_container_width=True)
         else:
             st.markdown(
-                f"""
-                <div class="warn-badge" style="background:#f8f8f8; border-left: 4px solid #bfbfbf; color:{SECONDARY_COLOR}; font-family: 'Segoe UI', Arial, sans-serif;">
-                    <b>Certificado não localizado.</b><br>
-                    <span style="font-size:0.96em">Verifique se digitou os nomes corretamente ou entre em contato com a organização.</span>
-                </div>
-                """, unsafe_allow_html=True
+                '<div class="msg msg-none">Nenhum certificado encontrado para esse nome.<br>Verifique os dados ou entre em contato com a SBB.</div>',
+                unsafe_allow_html=True,
             )
 
-with st.expander("Instruções e detalhes"):
-    st.markdown(
-        f"""
-        <div class="expander-content" style="font-family: 'Segoe UI', Arial, sans-serif; color:{SECONDARY_COLOR}; font-size:1.00em;">
-            <b>Nome esperado do arquivo:</b><br>
-            <code style="background:#ededed; color:{PRIMARY_COLOR};">primeiro_ultimo_{EXPECTED_SUFFIX}</code>
-            <br><br>
-            <b>Pasta Drive do evento:</b><br>
-            <a style="color:{ACCENT_COLOR}; text-decoration: underline;" href="{DRIVE_FOLDER_URL}" target="_blank">{DRIVE_FOLDER_URL}</a>
-            <br><br>
-            <b>Sobre este aplicativo:</b>
-            <ul>
-                <li>O app usa um arquivo <code style="background:#ededed; color:{PRIMARY_COLOR};">certificados.json</code> local para fazer a correspondência com os links do Drive.</li>
-                <li style="margin-top:.17em">Se houver dúvidas ou problema na localização, contate a organização do evento.</li>
-            </ul>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+st.markdown('<div class="foot">© Sociedade Brasileira de Biomecânica · Associação 2025</div>', unsafe_allow_html=True)
