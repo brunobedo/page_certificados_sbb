@@ -48,7 +48,7 @@ def find_certificate_url(first_name: str, last_name: str, manifest: dict) -> tup
 
 # === PAGE ===
 st.set_page_config(
-    page_title="Certificados SBB 2025",
+    page_title="Certificados SBB - Ano 2025",
     page_icon="✓",
     layout="centered"
 )
