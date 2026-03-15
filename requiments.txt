@@ -9,7 +9,6 @@ lxml==4.9.3
 numpy==1.26.1
 openpyxl==3.1.2
 pandas==2.1.2
-Pillow==10.1.0
 premailer==3.10.0
 python-dateutil==2.8.2
 pytz==2023.3.post1
