@@ -5,8 +5,18 @@ from pathlib import Path
 from typing import Optional
 import streamlit as st
 
-EXPECTED_SUFFIX = "certificado_sbb_2025.png"
-MANIFEST_PATH = Path(__file__).resolve().parent / "certificados.json"
+SCRIPT_DIR = Path(__file__).resolve().parent
+
+YEAR_CONFIG = {
+    "2025": {
+        "manifest": SCRIPT_DIR / "certificados25.json",
+        "suffix": "certificado_sbb_2025.png",
+    },
+    "2026": {
+        "manifest": SCRIPT_DIR / "certificados26.json",
+        "suffix": "certificado_sbb_2026.png",
+    },
+}
 
 
 def normalize_name(value: str) -> str:
@@ -20,10 +30,10 @@ def normalize_name(value: str) -> str:
     return value
 
 
-def build_filename(first_name: str, last_name: str) -> str:
+def build_filename(first_name: str, last_name: str, suffix: str) -> str:
     first = normalize_name(first_name)
     last = normalize_name(last_name)
-    return f"{first}_{last}_{EXPECTED_SUFFIX}"
+    return f"{first}_{last}_{suffix}"
 
 
 @st.cache_data
@@ -34,8 +44,10 @@ def load_manifest(path: Path, _mtime: float) -> dict:
         return json.load(f)
 
 
-def find_certificate_url(first_name: str, last_name: str, manifest: dict) -> tuple[str, Optional[str]]:
-    filename = build_filename(first_name, last_name)
+def find_certificate_url(
+    first_name: str, last_name: str, manifest: dict, suffix: str
+) -> tuple[str, Optional[str]]:
+    filename = build_filename(first_name, last_name, suffix)
     url = manifest.get(filename)
 
     if url is None and filename.endswith(".png"):
@@ -48,7 +60,7 @@ def find_certificate_url(first_name: str, last_name: str, manifest: dict) -> tup
 
 # === PAGE ===
 st.set_page_config(
-    page_title="Certificados SBB - 2025",
+    page_title="Certificados SBB",
     page_icon="✓",
     layout="centered"
 )
@@ -152,6 +164,131 @@ st.markdown(
             font-weight: 400;
         }
 
+        .year-picker-wrap {
+            width: 100%;
+            margin-bottom: 0 !important;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .year-prompt {
+            color: #111111;
+            font-size: 0.98rem;
+            margin: 0 0 0.75rem 0;
+            font-weight: 500;
+            letter-spacing: -0.01em;
+            text-align: center;
+        }
+
+        [data-testid="stElementContainer"]:has([data-testid="stHorizontalBlock"]:has(#year-picker-start)) {
+            margin-bottom: 0 !important;
+            padding-bottom: 0 !important;
+        }
+
+        [data-testid="stHorizontalBlock"]:has(#year-picker-start) {
+            width: 100% !important;
+            gap: 0 !important;
+            margin: 0 auto !important;
+            transform: translateX(10px);
+        }
+
+        [data-testid="stHorizontalBlock"]:has(#year-picker-start) > [data-testid="column"]:nth-child(2) {
+            display: flex !important;
+            justify-content: flex-end !important;
+            align-items: center !important;
+        }
+
+        [data-testid="stHorizontalBlock"]:has(#year-picker-start) > [data-testid="column"]:nth-child(3) {
+            margin-left: 1.5rem !important;
+            display: flex !important;
+            justify-content: flex-start !important;
+            align-items: center !important;
+        }
+
+        [data-testid="stHorizontalBlock"]:has(#year-picker-start) > [data-testid="column"]:nth-child(2),
+        [data-testid="stHorizontalBlock"]:has(#year-picker-start) > [data-testid="column"]:nth-child(3) {
+            width: auto !important;
+            flex: 0 0 auto !important;
+            min-width: 0 !important;
+            padding: 0 !important;
+        }
+
+        [data-testid="stElementContainer"]:has(#year-picker-bridge) {
+            margin-top: -0.5rem !important;
+            margin-bottom: 0 !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+        }
+
+        .year-bridge .section-wrap {
+            padding: 0 0.15rem;
+            margin-top: 0 !important;
+        }
+
+        .year-bridge .section-header {
+            text-align: center;
+            margin-bottom: 0.85rem;
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+        }
+
+        .year-bridge .section-title {
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+        }
+
+        [data-testid="stHorizontalBlock"]:has(#year-picker-start) [data-testid="stButton"] {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 0 !important;
+        }
+
+        [data-testid="stHorizontalBlock"]:has(#year-picker-start) [data-testid="stButton"] button {
+            border-radius: 8px !important;
+            padding: 0.3rem 0.75rem !important;
+            font-weight: 700 !important;
+            font-size: 0.95rem !important;
+            letter-spacing: 0.02em;
+            min-width: 64px !important;
+            min-height: 34px !important;
+            box-shadow: none !important;
+            transition: background 0.2s ease, border-color 0.2s ease !important;
+        }
+
+        [data-testid="stHorizontalBlock"]:has(#year-picker-start) [data-testid="stButton"] button[kind="secondary"],
+        [data-testid="stHorizontalBlock"]:has(#year-picker-start) [data-testid="stButton"] button[data-testid="baseButton-secondary"] {
+            background: #ebebeb !important;
+            border: 1.5px solid #111111 !important;
+            color: #111111 !important;
+        }
+
+        [data-testid="stHorizontalBlock"]:has(#year-picker-start) [data-testid="stButton"] button[kind="secondary"]:hover,
+        [data-testid="stHorizontalBlock"]:has(#year-picker-start) [data-testid="stButton"] button[data-testid="baseButton-secondary"]:hover {
+            background: #e0e0e0 !important;
+            border-color: #111111 !important;
+            color: #111111 !important;
+        }
+
+        [data-testid="stHorizontalBlock"]:has(#year-picker-start) [data-testid="stButton"] button[kind="primary"],
+        [data-testid="stHorizontalBlock"]:has(#year-picker-start) [data-testid="stButton"] button[data-testid="baseButton-primary"] {
+            background: #c8e6c9 !important;
+            border: 1.5px solid #4caf50 !important;
+            color: #1b5e20 !important;
+        }
+
+        [data-testid="stHorizontalBlock"]:has(#year-picker-start) [data-testid="stButton"] button[kind="primary"]:hover,
+        [data-testid="stHorizontalBlock"]:has(#year-picker-start) [data-testid="stButton"] button[data-testid="baseButton-primary"]:hover {
+            background: #b9dfbb !important;
+            border-color: #43a047 !important;
+            color: #1b5e20 !important;
+        }
+
+        [data-testid="stHorizontalBlock"]:has(#year-picker-start) [data-testid="stButton"] button:focus {
+            box-shadow: none !important;
+            outline: none !important;
+        }
+
         /* CONTEÚDO PRINCIPAL */
         .section-wrap {
             padding: 0 0.15rem;
@@ -159,7 +296,9 @@ st.markdown(
 
         .section-header {
             text-align: center;
-            margin-bottom: 1.2rem;
+            margin-bottom: 0.85rem;
+            margin-top: 0 !important;
+            padding-top: 0 !important;
         }
 
         .section-title {
@@ -205,7 +344,7 @@ st.markdown(
 
         /* botão */
         [data-testid="stFormSubmitButton"] button,
-        [data-testid="stButton"] button {
+        [data-testid="stElementContainer"]:not(:has(#year-picker-start)) [data-testid="stButton"] button {
             min-height: 50px;
             border-radius: 14px !important;
             border: 1px solid var(--sbb-dark) !important;
@@ -218,7 +357,7 @@ st.markdown(
         }
 
         [data-testid="stFormSubmitButton"] button:hover,
-        [data-testid="stButton"] button:hover {
+        [data-testid="stElementContainer"]:not(:has(#year-picker-start)) [data-testid="stButton"] button:hover {
             background: #014b27 !important;
             border-color: #014b27 !important;
             transform: translateY(-1px);
@@ -301,10 +440,10 @@ st.markdown(
     <div class="hero">
         <div class="hero-content">
             <div class="hero-kicker">Sociedade Brasileira de Biomecânica</div>
-            <div class="hero-title">Certificados de Associação 2025</div>
+            <div class="hero-title">Certificados de Associação</div>
             <div class="hero-subtitle">
                 Consulte seu certificado de associado de forma rápida e segura.
-                <br>Informe seus dados para localizar o documento cadastrado.<br>
+                <br>Informe seus dados para localizar o documento cadastrado.
             </div>
         </div>
     </div>
@@ -312,19 +451,68 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-_mtime = MANIFEST_PATH.stat().st_mtime if MANIFEST_PATH.exists() else 0.0
-manifest = load_manifest(MANIFEST_PATH, _mtime)
+st.markdown('<div class="year-picker-wrap">', unsafe_allow_html=True)
+st.markdown(
+    '<p class="year-prompt">Escolha o ano que você quer emitir o seu certificado</p>',
+    unsafe_allow_html=True,
+)
 
-st.markdown('<div class="section-wrap">', unsafe_allow_html=True)
+def _set_year(year: str) -> None:
+    st.session_state.selected_year = year
+
+
+if "selected_year" not in st.session_state:
+    st.session_state.selected_year = "2025"
+
+selected_year = st.session_state.selected_year
+
+col_left, col_2025, col_2026, col_right = st.columns([2.35, 1, 1, 1.95], gap="small")
+with col_left:
+    st.markdown('<span id="year-picker-start"></span>', unsafe_allow_html=True)
+with col_2025:
+    st.button(
+        "2025",
+        type="primary" if selected_year == "2025" else "secondary",
+        key="year_btn_2025",
+        on_click=_set_year,
+        args=("2025",),
+    )
+with col_2026:
+    st.button(
+        "2026",
+        type="primary" if selected_year == "2026" else "secondary",
+        key="year_btn_2026",
+        on_click=_set_year,
+        args=("2026",),
+    )
+
 st.markdown(
     """
-    <div class="section-header">
-        <div class="section-title">Buscar certificado</div>
-        <div class="section-text">Informe o primeiro nome e o último sobrenome cadastrados.</div>
+    <span id="year-picker-bridge"></span>
+    <div class="year-bridge">
+        <div class="section-wrap">
+            <div class="section-header">
+                <div class="section-title" style="color:#111111;text-align:center;">Informações para emitir o certificado</div>
+                <div class="section-text" style="color:#111111;text-align:center;">Informe o primeiro nome e o último sobrenome cadastrados.</div>
+            </div>
+        </div>
     </div>
     """,
     unsafe_allow_html=True,
 )
+
+st.markdown("</div>", unsafe_allow_html=True)
+
+year_cfg = YEAR_CONFIG[selected_year]
+suffix = year_cfg["suffix"]
+
+manifests = {}
+for year, cfg in YEAR_CONFIG.items():
+    path = cfg["manifest"]
+    mtime = path.stat().st_mtime if path.exists() else 0.0
+    manifests[year] = load_manifest(path, mtime)
+manifest = manifests[selected_year]
+
 
 with st.form("certificate_search_form"):
     col1, col2 = st.columns(2)
@@ -348,7 +536,7 @@ if submitted:
             unsafe_allow_html=True,
         )
     else:
-        filename, certificate_url = find_certificate_url(first_name, last_name, manifest)
+        filename, certificate_url = find_certificate_url(first_name, last_name, manifest, suffix)
 
         if certificate_url:
             st.markdown(
@@ -388,6 +576,6 @@ st.markdown(
 st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown(
-    '<div class="foot">© Sociedade Brasileira de Biomecânica · Associação 2025</div>',
+    '<div class="foot">© Sociedade Brasileira de Biomecânica</div>',
     unsafe_allow_html=True,
 )
