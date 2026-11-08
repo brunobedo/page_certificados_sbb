@@ -1,3 +1,4 @@
+import html
 import json
 import re
 import unicodedata
@@ -6,6 +7,9 @@ from typing import Optional
 import streamlit as st
 
 SCRIPT_DIR = Path(__file__).resolve().parent
+
+# Atualize esta data sempre que os manifestos de certificados forem atualizados.
+LAST_UPDATE = "07/11/2026"
 
 YEAR_CONFIG = {
     "2025": {
@@ -30,10 +34,17 @@ def normalize_name(value: str) -> str:
     return value
 
 
-def build_filename(first_name: str, last_name: str, suffix: str) -> str:
-    first = normalize_name(first_name)
+def normalize_cpf_prefix(value: str) -> str:
+    """Mantém apenas dígitos do valor informado (ex.: '123' -> '123')."""
+    return re.sub(r"\D", "", value or "")
+
+
+def build_filename(last_name: str, cpf_prefix: str, suffix: str) -> str:
+    # Os arquivos seguem o padrão: sobrenome_XXX_certificado_sbb_ANO.ext,
+    # onde XXX são os 3 primeiros dígitos do CPF.
     last = normalize_name(last_name)
-    return f"{first}_{last}_{suffix}"
+    cpf = normalize_cpf_prefix(cpf_prefix)
+    return f"{last}_{cpf}_{suffix}"
 
 
 @st.cache_data
@@ -45,17 +56,18 @@ def load_manifest(path: Path, _mtime: float) -> dict:
 
 
 def find_certificate_url(
-    first_name: str, last_name: str, manifest: dict, suffix: str
+    last_name: str, cpf_prefix: str, manifest: dict, suffix: str
 ) -> tuple[str, Optional[str]]:
-    filename = build_filename(first_name, last_name, suffix)
-    url = manifest.get(filename)
+    filename = build_filename(last_name, cpf_prefix, suffix)
+    stem = filename[:-4] if filename.endswith(".png") else filename
 
-    if url is None and filename.endswith(".png"):
-        url = manifest.get(filename[:-4])
-    elif url is None:
-        url = manifest.get(filename + ".png")
+    # O manifesto pode ter a extensão .png ou .pdf
+    for candidate in (filename, stem, stem + ".png", stem + ".pdf"):
+        url = manifest.get(candidate)
+        if url:
+            return filename, url
 
-    return filename, url
+    return filename, None
 
 
 # === PAGE ===
@@ -162,6 +174,22 @@ st.markdown(
             font-size: 1.03rem;
             line-height: 1.6;
             font-weight: 400;
+        }
+
+        .hero-updated {
+            display: inline-block;
+            margin-top: 1.2rem;
+            padding: 0.35rem 0.9rem;
+            border-radius: 999px;
+            background: rgba(0, 0, 0, 0.16);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            color: rgba(255, 255, 255, 0.92);
+            font-size: 0.84rem;
+            letter-spacing: 0.02em;
+        }
+
+        .hero-updated strong {
+            color: #ffffff;
         }
 
         .year-picker-wrap {
@@ -333,6 +361,39 @@ st.markdown(
             box-shadow: none !important;
         }
 
+        /* wrapper do baseweb: evita fundo/borda escuros do tema e cantos pretos */
+        .stTextInput [data-baseweb="input"],
+        .stTextInput [data-baseweb="base-input"] {
+            background: #ffffff !important;
+            border: none !important;
+            border-radius: 14px !important;
+            color-scheme: light;
+            min-height: 48px !important;
+            height: auto !important;
+            overflow: visible !important;
+        }
+
+        .stTextInput [data-baseweb="input"] > div,
+        .stTextInput [data-baseweb="base-input"] {
+            min-height: 48px !important;
+            height: auto !important;
+        }
+
+        .stTextInput input {
+            box-sizing: border-box !important;
+            height: 48px !important;
+        }
+
+        /* autofill do navegador (deixava um campo escuro) */
+        .stTextInput input:-webkit-autofill,
+        .stTextInput input:-webkit-autofill:hover,
+        .stTextInput input:-webkit-autofill:focus {
+            -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+            -webkit-text-fill-color: #111111 !important;
+            caret-color: #111111 !important;
+            border-radius: 14px !important;
+        }
+
         .stTextInput > div > div > input:hover {
             border-color: #b8d8c3 !important;
         }
@@ -386,6 +447,161 @@ st.markdown(
             color: #374151;
         }
 
+        .ok-card {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            margin: 1.2rem 0 0.9rem 0;
+            padding: 1.3rem 1.5rem;
+            border-radius: 16px;
+            background: #ffffff;
+            border: 1px solid rgba(30, 204, 66, 0.35);
+            border-left: 5px solid var(--sbb-green);
+            box-shadow: 0 8px 24px rgba(1, 97, 49, 0.08);
+            text-align: left;
+        }
+
+        .ok-badge {
+            flex: 0 0 auto;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: var(--sbb-dark);
+            color: #ffffff;
+            font-size: 1.2rem;
+            font-weight: 800;
+            line-height: 38px;
+            text-align: center;
+        }
+
+        .ok-title {
+            color: var(--sbb-dark);
+            font-size: 1.15rem;
+            font-weight: 750;
+            margin-bottom: 0.2rem;
+        }
+
+        .ok-text {
+            color: var(--text-soft);
+            font-size: 0.97rem;
+            line-height: 1.6;
+        }
+
+        [data-testid="stLinkButton"] a {
+            min-height: 50px;
+            border-radius: 14px !important;
+            border: 1px solid var(--sbb-dark) !important;
+            background: var(--sbb-dark) !important;
+            color: #ffffff !important;
+            font-weight: 700 !important;
+            transition: all 0.2s ease !important;
+            box-shadow: 0 8px 18px rgba(1, 97, 49, 0.14);
+        }
+
+        [data-testid="stLinkButton"] a:hover {
+            background: #014b27 !important;
+            border-color: #014b27 !important;
+            transform: translateY(-1px);
+        }
+
+        [data-testid="stLinkButton"] a * {
+            color: #ffffff !important;
+        }
+
+        .nf-card {
+            margin-top: 1.2rem;
+            padding: 1.5rem 1.5rem 1.3rem 1.5rem;
+            border-radius: 16px;
+            background: #ffffff;
+            border: 1px solid #dde5df;
+            box-shadow: 0 8px 24px rgba(1, 97, 49, 0.07);
+            text-align: left;
+            color: #374151;
+            font-size: 0.97rem;
+            line-height: 1.6;
+        }
+
+        .nf-title {
+            color: var(--sbb-dark);
+            font-size: 1.15rem;
+            font-weight: 750;
+            margin-bottom: 0.3rem;
+        }
+
+        .nf-text {
+            color: var(--text-soft);
+            margin: 0.2rem 0;
+        }
+
+        .nf-data {
+            margin: 0.9rem 0 1.1rem 0;
+            border: 1px solid #e3ece6;
+            border-radius: 12px;
+            background: var(--sbb-soft-2);
+            overflow: hidden;
+        }
+
+        .nf-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 0.65rem 1rem;
+            border-bottom: 1px solid #e3ece6;
+        }
+
+        .nf-row:last-child {
+            border-bottom: none;
+        }
+
+        .nf-label {
+            color: #5f6d65;
+            font-size: 0.9rem;
+        }
+
+        .nf-value {
+            color: #111111;
+            font-weight: 650;
+            text-align: right;
+            word-break: break-word;
+        }
+
+        .nf-notice {
+            margin: 0 0 1rem 0;
+            padding: 0.9rem 1.1rem;
+            border-radius: 12px;
+            background: #fff8e1;
+            border: 1px solid #f2d27a;
+            border-left: 5px solid #e0a800;
+            color: #5c4300;
+            font-weight: 600;
+        }
+
+        .nf-notice-title {
+            font-size: 0.78rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            font-weight: 800;
+            margin-bottom: 0.2rem;
+        }
+
+        .nf-notice a {
+            color: #5c4300;
+            font-weight: 800;
+        }
+
+        .nf-contact {
+            margin-top: 0.8rem;
+            padding-top: 0.8rem;
+            border-top: 1px solid var(--line-soft);
+            font-size: 0.92rem;
+            color: #5f6d65;
+        }
+
+        .nf-contact a {
+            color: var(--sbb-dark);
+            font-weight: 650;
+        }
+
         .filename {
             display: inline-block;
             margin-top: 0.35rem;
@@ -436,7 +652,7 @@ st.markdown(
 )
 
 st.markdown(
-    """
+    f"""
     <div class="hero">
         <div class="hero-content">
             <div class="hero-kicker">Sociedade Brasileira de Biomecânica</div>
@@ -445,6 +661,7 @@ st.markdown(
                 Consulte seu certificado de associado de forma rápida e segura.
                 <br>Informe seus dados para localizar o documento cadastrado.
             </div>
+            <div class="hero-updated">Última atualização: <strong>{LAST_UPDATE}</strong></div>
         </div>
     </div>
     """,
@@ -493,7 +710,7 @@ st.markdown(
         <div class="section-wrap">
             <div class="section-header">
                 <div class="section-title" style="color:#111111;text-align:center;">Informações para emitir o certificado</div>
-                <div class="section-text" style="color:#111111;text-align:center;">Informe o primeiro nome e o último sobrenome cadastrados.</div>
+                <div class="section-text" style="color:#111111;text-align:center;">Informe o primeiro nome, o último sobrenome e os 3 primeiros dígitos do CPF cadastrados.</div>
             </div>
         </div>
     </div>
@@ -515,7 +732,7 @@ manifest = manifests[selected_year]
 
 
 with st.form("certificate_search_form"):
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
 
     with col1:
         first_name = st.text_input("Primeiro nome", placeholder="Ex.: João")
@@ -523,55 +740,86 @@ with st.form("certificate_search_form"):
     with col2:
         last_name = st.text_input("Último sobrenome", placeholder="Ex.: Silva")
 
-    submitted = st.form_submit_button("Buscar certificado", use_container_width=True)
-
-if submitted:
-    if not first_name.strip() or not last_name.strip():
-        st.markdown(
-            """
-            <div class="result-box result-none">
-                Preencha o primeiro nome e o último sobrenome para continuar.
-            </div>
-            """,
-            unsafe_allow_html=True,
+    with col3:
+        cpf_prefix = st.text_input(
+            "3 primeiros dígitos do CPF", placeholder="Ex.: 123", max_chars=3
         )
-    else:
-        filename, certificate_url = find_certificate_url(first_name, last_name, manifest, suffix)
 
-        if certificate_url:
-            st.markdown(
-                f"""
-                <div class="result-box result-ok">
-                    Certificado localizado com sucesso.
-                    <br>
-                        Clique no botão abaixo para abrir o certificado.
-                    <br>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-            st.link_button("Abrir certificado", certificate_url, use_container_width=True)
-        else:
-            st.markdown(
-                """
-                <div class="result-box result-none">
-                    Nenhum certificado foi encontrado para os dados informados.
-                    Revise a digitação e tente novamente.
-                    <br>Se o problema persistir, entre em contato com a SBB.<br>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+    submitted = st.form_submit_button("Buscar certificado", use_container_width=True)
 
 st.markdown(
     """
     <div class="helper-line">
         Dica: em nomes compostos ou com preposições, tente buscar pelo primeiro nome e pelo último sobrenome
-        cadastrado.  <br>Ex.: <em>Ana Maria da Silva Coutinho</em> → <em>Ana</em> <em>Coutinho</em>. <br>
+        cadastrado.<br>Ex.: <em>Ana Maria da Silva Coutinho</em> → <em>Ana Coutinho</em>.
     </div>
     """,
     unsafe_allow_html=True,
 )
+
+if submitted:
+    cpf_digits = normalize_cpf_prefix(cpf_prefix)
+    if not first_name.strip() or not last_name.strip() or not cpf_prefix.strip():
+        st.markdown(
+            """
+            <div class="result-box result-none">
+                Preencha o primeiro nome, o último sobrenome e os 3 primeiros dígitos do CPF para continuar.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    elif len(cpf_digits) != 3:
+        st.markdown(
+            """
+            <div class="result-box result-none">
+                Informe exatamente os 3 primeiros dígitos do CPF (apenas números).
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        filename, certificate_url = find_certificate_url(last_name, cpf_digits, manifest, suffix)
+
+        if certificate_url:
+            st.markdown(
+                f"""
+                <div class="ok-card">
+                    <div class="ok-badge">✓</div>
+                    <div class="ok-body">
+                        <div class="ok-title">Certificado localizado</div>
+                        <div class="ok-text">
+                            Encontramos o certificado de associado de
+                            <strong>{html.escape(first_name.strip())} {html.escape(last_name.strip())}</strong>
+                            referente a {selected_year}. Utilize o botão abaixo para abri-lo e, se desejar, salvá-lo ou imprimi-lo.
+                        </div>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            st.link_button("Abrir certificado", certificate_url, use_container_width=True, type="primary")
+        else:
+            st.markdown(
+                f"""
+                <div class="nf-card">
+                    <div class="nf-title">Certificado não localizado</div>
+                    <div class="nf-text">Não encontramos um certificado para os dados informados. Confira se estão corretos:</div>
+                    <div class="nf-data">
+                        <div class="nf-row"><span class="nf-label">Nome</span><span class="nf-value">{html.escape(first_name.strip())}</span></div>
+                        <div class="nf-row"><span class="nf-label">Sobrenome</span><span class="nf-value">{html.escape(last_name.strip())}</span></div>
+                        <div class="nf-row"><span class="nf-label">3 primeiros dígitos do CPF</span><span class="nf-value">{html.escape(cpf_digits)}</span></div>
+                    </div>
+                    <div class="nf-notice">
+                        <div class="nf-notice-title">Importante</div>
+                        Os certificados são emitidos somente após o pagamento da associação, realizado em
+                        <a href="https://bsb.org.br/" target="_blank" rel="noopener noreferrer">bsb.org.br</a>.
+                    </div>
+                    <div class="nf-text">Após o pagamento, a emissão dos certificados é atualizada periodicamente pelo sistema.</div>
+                    <div class="nf-contact">Dúvidas: <a href="mailto:soc.bras.biomecanica@gmail.com">soc.bras.biomecanica@gmail.com</a></div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
 st.markdown("</div>", unsafe_allow_html=True)
 
