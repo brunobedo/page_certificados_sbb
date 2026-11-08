@@ -522,7 +522,7 @@ st.markdown(
         }
 
         .nf-title {
-            color: var(--sbb-dark);
+            color: #c62828;
             font-size: 1.15rem;
             font-weight: 750;
             margin-bottom: 0.3rem;
