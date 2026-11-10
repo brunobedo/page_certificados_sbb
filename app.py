@@ -48,7 +48,9 @@ def build_filename(last_name: str, cpf_prefix: str, suffix: str) -> str:
 
 
 @st.cache_data
-def load_manifest(path: Path, _mtime: float) -> dict:
+def load_manifest(path: Path, mtime: float) -> dict:
+    # `mtime` não pode começar com "_": o Streamlit ignora parâmetros com
+    # underscore na chave do cache, e o JSON atualizado nunca seria relido.
     if not path.exists():
         return {}
     with open(path, "r", encoding="utf-8") as f:
