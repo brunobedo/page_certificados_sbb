@@ -14,11 +14,11 @@ LAST_UPDATE = "09/11/2026"
 YEAR_CONFIG = {
     "2025": {
         "manifest": SCRIPT_DIR / "certificados25.json",
-        "suffix": "certificado_sbb_2025.png",
+        "suffix": "certificado_sbb_2025.pdf",
     },
     "2026": {
         "manifest": SCRIPT_DIR / "certificados26.json",
-        "suffix": "certificado_sbb_2026.png",
+        "suffix": "certificado_sbb_2026.pdf",
     },
 }
 
