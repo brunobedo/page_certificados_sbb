@@ -9,7 +9,7 @@ import streamlit as st
 SCRIPT_DIR = Path(__file__).resolve().parent
 
 # Atualize esta data sempre que os manifestos de certificados forem atualizados.
-LAST_UPDATE = "09/11/2026"
+LAST_UPDATE = "12/11/2026"
 
 YEAR_CONFIG = {
     "2025": {
